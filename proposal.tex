@@ -1,0 +1,105 @@
+%
+% proposal.tex
+%
+% Dissertation Proposal Template.
+% School of Computing
+% Clemson University
+%
+\documentclass[10pt]{ClemsonProposal}
+
+\usepackage{caption,subcaption}
+\usepackage{graphicx}
+% This is nice for source code listings
+\usepackage{listings}
+\usepackage{tabularx}
+
+% This is needed to include figures
+% \usepackage{graphicx}
+
+% Use any additional packages you might need
+
+
+%
+% Give values to the variables used in this document
+%
+\title{Galois for FPGA\\An Efficient Microarchitecture and Compiler for Accelerating Amorphous Data Parallel Graph Applications}
+\department{Department of Electrical and Computer Engineering}
+\university{The University of Texas at Austin}
+\documenttype{Dissertation Proposal}
+\major{Computer Architecture and Embedded Processors}
+\proposalday{20}
+\proposalmonth{April}
+\proposalyear{2015}
+\author{Dan Zhang}
+\committeechair{Keshav Pingali}
+\committeememberone{Derek Chiou}
+\committeemembertwo{Mattan Erez}
+\committeememberthree{Andreas Gerstlauer}
+\committeememberfour{Eric Chung}
+
+% Just in case you have more then 3 committee members
+% \committeememberfive{Member5 Name}
+% \committeemembersix{Member6 Name}
+
+
+%
+% PDF Setup -- You should not need to change this
+%
+\hypersetup{
+    colorlinks,
+    linkcolor={black},
+    citecolor={black},
+    filecolor={black},
+    urlcolor={black},
+    pdftitle={\thetitle},
+    pdfauthor={\theauthor},
+    pdfsubject={\thedocumenttype},
+    pdfkeywords={The University of Texas at Austin, \theauthor, \thedocumenttype},
+    pdfstartpage={1}
+}
+
+
+%
+% User-specified command definitions/redefinitions
+%
+\newcommand{\cplusplus}{{\rm C\raise.5ex\hbox{\small ++}}}
+
+
+\begin{document}
+%   ==========================================================================
+%   Begin front matter (pages are numbered with roman numerals)
+%   ==========================================================================
+    \begin{frontmatter}
+        \maketitle
+		\tableofcontents
+        \newpage
+
+        % Generate the abstract
+        \input{abstract.tex}
+	\end{frontmatter}
+
+
+
+%   ==========================================================================
+%   Begin main matter (pages are numbered with arabic numerals)
+%   ==========================================================================
+    \doublespacing     % Text should be double spaced
+    \pagestyle{fancy}  % Turn the nice header on for the rest of the document
+
+    %
+    % I use a file for every section.  Each of these corresponds to a file
+    % with the specified name ending in '.tex' (e.g., introduction.tex).
+    %
+    \include{introduction}
+    \include{proposedWork}
+    \include{workCompleted}
+    \include{roadmap}
+    \include{conclusion}
+
+
+
+%   ==========================================================================
+%   Wrap up the document with the Bibliography (looks for the specified .bib)
+%   ==========================================================================
+    \makebibliography{bibliography}
+\end{document}

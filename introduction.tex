@@ -1,0 +1,162 @@
+%!TEX root = proposal.tex
+%\addbibresource{bibliography.bib}
+%----------------------------------------------------------------------------
+\section{Introduction}\label{sect:problem}
+%----------------------------------------------------------------------------
+
+The pervasiveness of multicore processors have shifted the burden of improving program execution speed from chip 
+manufacturers to software developers. Data parallelism often occurs in \textit{regular} programs, which manipulate 
+dense matrices and arrays. Many language constructs have been proposed to enable programmers to easily express 
+regular data-parallel application in their apps, such as parallel-for in OpenMP \cite{openmpScheduling}, thread 
+blocks in CUDA \cite{cuda}, and work-groups in OpenCL \cite{opencl}.
+
+However, \textit{irregular} programs are much harder to parallelize. Irregular programs use pointer-based data 
+structures such as lists, trees, and graphs, and are common outside of computational science. Examples can be found 
+in domains like n-body simulation \cite{barneshut}, data mining \cite{datamining}, 
+maxflow \cite{cormen}, social networks \cite{communityDiscovery}, 
+and meshing \cite{dmr}. Recent research efforts have made considerable headway, demonstrating that data-driven 
+parallel algorithms are algorithmically efficient and support higher performance than topology-driven 
+implementations on both general purpose processors \cite{galoisVsVertex} \cite{thinkLikeVertex} as well as GPUs 
+\cite{galoisGPU} \cite{datavstopGPU}.
+
+One system for data-driven applications is Galois \cite{galois}, which comprises the Galois worklist-based 
+data-driven programming model, the unordered transactional \textbf{foreach} iterator, a set of concurrent library 
+components, and the Galois software runtime system. These applications can benefit significantly from dedicated 
+worklist accelerators on both general purpose multicore processors \cite{carbon} and GPUs \cite{gpuWorklist}. 
+However, as fixed logic, these accelerators cannot be easily adapted to the different scheduling requirements of 
+each algorithm, potentially resulting in lost performance \cite{galoisOrdering}.
+
+
+%----------------------------------------------------------------------------
+\subsection{Thesis Proposal}
+%----------------------------------------------------------------------------
+
+For my thesis, I propose the Galois system for FPGA, consisting of a microarchitecture designed to accelerate 
+Galois applications, a set of hardware accelerators matching the Galois software library components, and a compiler 
+to emit a custom pipelined engine from Galois software code. By automatically generating custom hardware from a 
+Galois software specification, Galois for FPGA can achieve both higher performance and energy efficiency compared to 
+Galois running on general purpose hardware.
+
+
+\subsection{The Galois System}
+
+
+\begin{figure}
+\centering
+\lstset{language=Java}
+\begin{lstlisting}
+Graph graph = { /* init */}; // Initialize graph contents
+WorkList<GraphNode> workQ();
+workQ.enq(init); // worklist initialized with the starting node
+foreach(uint nid : workQ) {
+   uint nid = workQ.deq();
+   GraphNode node = graph.getNode(nid);
+   for(int i = 0; i < node.numEdges; i++) {
+      Edge e = graph.getEdge(node.edgePtr + i);
+      uint newDist = node.dist + edge.weight;
+      if(newDist < graph.getNode(edge.dest).dist) {
+         node.dist = newDist;
+         workQ.enq(edge.dest);
+      }
+   }
+}
+\end{lstlisting}
+\caption{Galois pseudocode for SSSP}
+\label{fig:ssspSource}
+\end{figure}
+
+In \cite{galois}, Pingali et al. introduce the notion of operator formulation, in which an algorithm is viewed in 
+terms of its action on data structures. The authors demonstrate that operator formulation is both general 
+\cite{galoisAlgorithms} and effectively exposes the fine-grained amorphous data-parallelism present in irregular 
+algorithms \cite{galoisPerf}. They 
+propose the Galois programming model, which is a sequential, object-oriented model that is augmented with the 
+Galois set operator \textbf{foreach(e in Set S) \{B(e)\}}, in which the loop body \textit{B(e)} is executed for each 
+element \textit{e} of set \textit{S}. Set \textit{S} may be either partially ordered or unordered. However, unlike 
+a regular \textbf{for} loop, the loop ordering is treated as a hint simply to improve performance. It is the 
+programmer's responsibility to write Galois code in a way that ordering does not affect algorithm correctness. Each 
+loop iteration may conflict with one another. The Galois runtime automatically generates locking mechanisms to 
+ensure atomicity is not violated. When an iteration 
+executes, it may add additional elements to set \textit{S}. In Galois, set \textit{S} is referred to as the 
+\textbf{\textit{worklist}}.
+
+The Galois system provides a concurrent data structure library, including worklists and graphs. Each data structure 
+has several variants, each with several parameters; it's up to the programmer to choose the best variant and 
+parameters to fit the algorithm and input. However, with a properly designed algorithm, the variant chosen only 
+affects performance, not correctness.
+
+\subsubsection{SSSP on Galois}
+
+As a simple example, consider Single-Source Shortest Path (SSSP), the problem of finding the shortest path from a 
+single source node to all connected nodes. SSSP is a well-known and long-studied problem with many practical 
+applications on a wide spectrum of graph types. The traditional serial approach to SSSP is Dijkstra's Algorithm 
+\cite{dijkstra}, which uses a priority queue to process the node with the shortest cumulative distance from the 
+single source node first. While this is an efficient serial algorithm \textit{(O(v log v + e))}, it is poorly 
+suited for multithreading. Bellman-Ford \cite{bellmanford} trades off work efficiency \textit{(O(ev))} for 
+parallelism by processing every edge connection in the graph until the distances converge. A more flexible 
+solution is Delta-stepping \cite{deltaStepping}, which is a hybrid of Dijkstra's and Bellman-Ford. Rather than 
+considering the vertex with the lowest distance like Dijkstra's, delta-stepping groups vertices into buckets. Within 
+each bucket, vertices are unordered and thus can be executed in parallel. If the bucket size is 1, then 
+delta-stepping is identical to Dijkstra's algorithm. If the bucket size is infinite, then delta-stepping is the same 
+as Bellman-Ford. Thus, by choosing a proper bucket size, or delta, we can make the proper tradeoff between 
+available parallelism and work efficiency. Note that the appropriate bucket size not only changes based on the graph 
+input but also on the host architecture running the algorithm. Galois source code for SSSP is shown in Figure 
+\ref{fig:ssspSource}. If the worklist \textit{workQ} is using strict priority order, then the source code is an 
+implementation of Dijkstra's Algorithm. Else, the source code depicts delta-stepping.
+
+\subsubsection{Galois vs. other programming models}
+
+Galois contains a high-level programming model; thus it can be implemented within any parallel framework such as CUDA 
+and OpenCL. The Galois authors have implemented Galois on both Java and C++, and are working towards implementing 
+Galois for GPU using CUDA \cite{galoisGPU}. Davidson et al. \cite{gpuSSSP} demonstrated the potential value of Galois 
+for GPU by implementing a SSSP delta-stepping within CUDA using worklists, claiming 14x to 340x higher performance 
+compared to a Bellman-Ford implementation depending on the input. However, the authors had to construct custom 
+Galois-like worklists and synchronization mechanisms on top of CUDA. As this was a custom solution designed to run 
+only SSSP, these modules must be reimplemented to effectively target a different application. 
+Considerable work must be done to build up the synchronization, scheduling, work-balancing, and 
+work spilling features of a Galois worklist.
+
+
+There are many other programming frameworks targeting graph applications, such as PowerGraph \cite{powergraph}, Ligra 
+\cite{ligra}, and GraphGen \cite{graphgen}. These frameworks are all \textit{vertex-centric}, meaning that computation 
+is expressed in terms of each vertex and its neighbors. The schedule is simple: iterate across all vertices in the 
+graph until the algorithm converges. Although this programming model is useful and easy to understand, vertex-centric 
+models can be inefficent since even nodes without any work must be executed every cycle. In addition, since a 
+vertex only has information about its immediate neighbors, information is propogated slowly, 
+one hop at a time. For example, Tian et al. \cite{thinkLikeVertex} demonstrated that a graph-centric model of a 
+connected components algorithm ran 63x faster and used 204x fewer network messages than its vertex-centric 
+counterpart. Its important to note that its possible to write vertex-centric programs within Galois \cite{galoisPerf}; 
+however, Galois provides the user the flexibility to design more efficient graph-centric algorithms.
+
+\subsection{Task Scheduling}
+
+One common parallel programming approach is to decompose a program into parallel tasks and allow an underlying 
+software layer to schedule these tasks to different threads. Examples of popular multithreaded task-based runtime 
+systems include Cilk \cite{cilk}, OpenMP \cite{openmpScheduling}, and CUDA \cite{cuda}. These systems all implement 
+sophisticated forms of load balancing, including techniques such as work stealing and chunking. However, researchers 
+have demonstrated that many algorithms also benefit significantly proper task prioritization due to faster 
+convergence, leading to a drastic net reduction in work \cite{gpuSSSP} \cite{adm}. State-of-the-art runtime systems 
+like that in Galois are able to take advantage of this prioritization to achieve massive speedups 
+\cite{galoisOrdering}.
+
+Despite software tasked-based runtime systems already achieving a high degree of speedup, there is still room for even 
+more improvement through hardware acceleration. Traditional multicore processors are not well suited towards executing 
+parallel programs with abundant fine-grained parallelism expressed as many small threads \cite{isonet}. These programs 
+have small tasks for which software task schedulers achieve only limited parallel speedups due to the increased 
+overhead relative to the amount of work done per task \cite{carbon}. Researchers have proposed augmenting processors 
+with dedicated hardware to aid in dynamic load distribution and balancing. Rigel is a 1024 core architecture designed 
+for task-level parallelism through its task-centric memory model \cite{rigel}. StarT \cite{starT} implemented 
+dedicated hardware queues for message passing with high priority levels for kernel code. Carbon \cite{carbon} proposes adding 
+specialized instructions and dedicated hardware queues with fixed LIFO priority to handle task queue management. 
+IsoNet \cite{isonet} proposes a dedicated network of load balancing engines scalable to thousands of cores. Dedicated 
+hardware queues have even been proposed for GPUs \cite{gpuWorklist}. However, these techniques do not consider the 
+potential performance improvements gained by a more optimal priority schedule. Although \cite{adm} proposes 
+asynchronous direct messages to accelerate custom software schedulers, the authors only consider simple schedules such 
+as FIFO and LIFO rather than true priority schedules.
+
+Task scheduling is a first-order concern in the realm of internet core routers \cite{routerQoS}. State-of-the-art 
+routers have the ability to dynamically schedule between tens of thousands of queues at hundreds of millions of 
+scheduling decisions per second per chip \cite{router1tbps}. While there are differences between networking and 
+fine-grained task scheduling, such as the size of the packets, latency timescales, and various other area and 
+performance tradeoffs, some networking routing, prioritization, and scheduling algorithms may be relevant to my 
+thesis. For my thesis, aside from developing my own worklist scheduling algorithms, I will consider scheduling 
+techniques from networking to determine what concepts can be directly applied to improve my own scheduling techniques.

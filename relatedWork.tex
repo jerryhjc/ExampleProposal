@@ -1,0 +1,17 @@
+%!TEX root = proposal.tex
+%\addbibresource{bibliography.bib}
+% ---------------------------------------------------------------------------
+\section{Related Work}\label{sect:relatedWork}
+% ---------------------------------------------------------------------------
+To the best of my knowledge, no one else has proposed the use of a programming model as high-level as Galois for the 
+purposes of HLS. I believe that this is also the first work implementing transactional memory semantics for HLS. 
+However, previous work has explored the notion of using a vertex-centric graph language for HLS. 
+
+\subsection{GraphGen for CoRAM}
+
+Nurvitadhi et al. has proposed GraphGen for CoRAM \cite{graphGenCoRAM}, a vertex-centric graph language targeting the 
+CoRAM \cite{coram} FPGA memory architecture. However, due to the vertex-centric nature of the input language, work 
+scheduling and conflict detection can be done statically. GraphGen as an input language is more restrictive and 
+frequently lower performance than the more complex Galois programming model. GraphGen for CoRAM proposes a few 
+optimizations: double buffering, coalescing, pipeline parallelism, and multiple read ports. Galois for HLS implements 
+pipeline parallelism in the Galois HLS compiler and the other optimizations and more in the microarchitecture.

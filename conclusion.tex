@@ -1,0 +1,16 @@
+%!TEX root = proposal.tex
+% ---------------------------------------------------------------------------
+\section{Conclusion}\label{sect:conclusion}
+% ---------------------------------------------------------------------------
+I propose the use of the parallel graph language Galois for FPGA, which presents a high-level transactional programming 
+model, allowing the user to describe the fine-grained task parallelism available in amorphous data-parallel graph algorithms to be more easily 
+extracted by the compiler and Galois runtime. By combining the high-level transactional semantics of Galois with 
+the automatic Galois HLS compiler and Galois microarchitecture that supports dynamic scheduling and synchronization, my tool can simultaneously improve 
+quality of results while decreasing programmer effort. To achieve these goals, I will augment an existing HLS compiler 
+to support the Galois unordered \textbf{foreach} loop iterator, and design a set of Galois library components and 
+Galois microarchitectural template. The compiler will emit custom pipelined engines and connect them to my proposed Galois 
+microarchitecture. Given the scope of the project, I will first focus on Galois programs that do not modify the structure of 
+the input graph, but will later experiment with a simple memory allocator for mutable graphs. 
+I will also not be focusing on preserving atomicity across \textbf{foreach} loop iterations, as that 
+is the thesis project of my labmate Xiaoyu Ma. Preliminary results for SSSP demonstrate that my proposed Galois 
+microarchitecture is promising and should be effective for accelerating other Galois programs.
